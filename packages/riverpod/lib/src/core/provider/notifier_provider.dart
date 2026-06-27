@@ -310,9 +310,8 @@ abstract class $AsyncNotifierBase<ValueT> extends AnyNotifier<AsyncValue<ValueT>
     switch (state) {
       case AsyncLoading():
         return null;
-      case final AsyncError<ValueT> err:
-        final encodedError = encodeError?.call(err);
-        return storage.then((s) => encodedError != null ? s.write(key, encodedError, options) : s.delete(key));
+      case AsyncError():
+        return null;
       case AsyncData(:final value):
         return storage.then((s) => s.write(key, encode(value), options));
     }
