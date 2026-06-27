@@ -24,8 +24,7 @@ This means that you tried to either:
 
 /// The prototype of `Notifier.build` overrides.
 @internal
-typedef RunNotifierBuild<NotifierT, CreatedT> =
-    CreatedT Function(Ref ref, NotifierT notifier);
+typedef RunNotifierBuild<NotifierT, CreatedT> = CreatedT Function(Ref ref, NotifierT notifier);
 
 /// A base class for all "notifiers".
 ///
@@ -52,8 +51,7 @@ typedef RunNotifierBuild<NotifierT, CreatedT> =
 abstract class AnyNotifier<StateT, ValueT> {
   (Object?,)? _debugKey;
 
-  $ClassProviderElement<AnyNotifier<StateT, ValueT>, StateT, ValueT, Object?>?
-  _element;
+  $ClassProviderElement<AnyNotifier<StateT, ValueT>, StateT, ValueT, Object?>? _element;
 
   /// The [Ref] associated with this notifier.
   @protected
@@ -99,8 +97,9 @@ abstract class AnyNotifier<StateT, ValueT> {
     FutureOr<Storage<KeyT, EncodedT>> storage,
     KeyT key,
     EncodedT Function(ValueT state) encode,
-    StorageOptions options,
-  );
+    StorageOptions options, {
+    EncodedT? Function(AsyncError<ValueT> error)? encodeError,
+  });
 
   /// Listens to changes on the value exposed by this provider.
   ///
@@ -112,10 +111,7 @@ abstract class AnyNotifier<StateT, ValueT> {
   ///
   /// Returns a function which can be called to remove the listener.
   @protected
-  RemoveListener listenSelf(
-    void Function(StateT? previous, StateT next) listener, {
-    void Function(Object error, StackTrace stackTrace)? onError,
-  }) {
+  RemoveListener listenSelf(void Function(StateT? previous, StateT next) listener, {void Function(Object error, StackTrace stackTrace)? onError}) {
     return $ref.listenSelf(listener, onError: onError);
   }
 
@@ -161,10 +157,7 @@ abstract class AnyNotifier<StateT, ValueT> {
   @mustCallSuper
   WhenComplete runBuild();
 
-  void _debugAssertNoDuplicateKey(
-    Object? key,
-    AnyNotifier<Object?, Object?> self,
-  ) {
+  void _debugAssertNoDuplicateKey(Object? key, AnyNotifier<Object?, Object?> self) {
     if (kDebugMode) {
       final selfElement = (self as AnyNotifier).elementOrNull();
 
@@ -240,6 +233,7 @@ extension NotifierPersistX<StateT, ValueT> on AnyNotifier<StateT, ValueT> {
     required KeyT key,
     required EncodedT Function(ValueT state) encode,
     required ValueT Function(EncodedT encoded) decode,
+    EncodedT? Function(AsyncError<ValueT> error)? encodeError,
     StorageOptions options = const StorageOptions(),
   }) {
     _debugAssertNoDuplicateKey(key, this);
@@ -249,7 +243,7 @@ extension NotifierPersistX<StateT, ValueT> on AnyNotifier<StateT, ValueT> {
       didChange = true;
 
       try {
-        final futureOr = _callEncode(storage, key, encode, options);
+        final futureOr = _callEncode(storage, key, encode, options, encodeError: encodeError);
         if (futureOr is Future) {
           unawaited(futureOr.onError(ref.container.defaultOnError));
         }
@@ -286,9 +280,7 @@ extension NotifierPersistX<StateT, ValueT> on AnyNotifier<StateT, ValueT> {
         );
 
         if (futureOr is Future) {
-          return PersistResult._(
-            future: futureOr.catchError(ref.container.defaultOnError),
-          );
+          return PersistResult._(future: futureOr.catchError(ref.container.defaultOnError));
         }
       } catch (err, stack) {
         // Don't block the provider if decoding failed
@@ -301,15 +293,10 @@ extension NotifierPersistX<StateT, ValueT> on AnyNotifier<StateT, ValueT> {
 }
 
 @internal
-abstract class $AsyncNotifierBase<ValueT>
-    extends AnyNotifier<AsyncValue<ValueT>, ValueT> {
+abstract class $AsyncNotifierBase<ValueT> extends AnyNotifier<AsyncValue<ValueT>, ValueT> {
   @override
   void _setStateFromValue(ValueT value) {
-    state = AsyncLoading._(
-      (progress: state.progress),
-      value: (value, kind: DataKind.cache, source: DataSource.liveOrRefresh),
-      error: state._error,
-    );
+    state = AsyncLoading._((progress: state.progress), value: (value, kind: DataKind.cache, source: DataSource.liveOrRefresh), error: state._error);
   }
 
   @override
@@ -317,17 +304,17 @@ abstract class $AsyncNotifierBase<ValueT>
     FutureOr<Storage<KeyT, EncodedT>> storage,
     KeyT key,
     EncodedT Function(ValueT state) encode,
-    StorageOptions options,
-  ) {
+    StorageOptions options, {
+    EncodedT? Function(AsyncError<ValueT> errorState)? encodeError,
+  }) {
     switch (state) {
       case AsyncLoading():
         return null;
-      case AsyncError():
-        return storage.then((storage) => storage.delete(key));
+      case final AsyncError<ValueT> err:
+        final encodedError = encodeError?.call(err);
+        return storage.then((s) => encodedError != null ? s.write(key, encodedError, options) : s.delete(key));
       case AsyncData(:final value):
-        return storage.then(
-          (storage) => storage.write(key, encode(value), options),
-        );
+        return storage.then((s) => s.write(key, encode(value), options));
     }
   }
 }
@@ -342,21 +329,18 @@ abstract class $SyncNotifierBase<ValueT> extends AnyNotifier<ValueT, ValueT> {
     FutureOr<Storage<KeyT, EncodedT>> storage,
     KeyT key,
     EncodedT Function(ValueT state) encode,
-    StorageOptions options,
-  ) {
-    return storage.then(
-      (storage) => storage.write(key, encode(state), options),
-    );
+    StorageOptions options, {
+    EncodedT? Function(AsyncError<ValueT> error)? encodeError,
+  }) {
+    return storage.then((storage) => storage.write(key, encode(state), options));
   }
 }
 
 @internal
 extension ClassBaseX<StateT, ValueT> on AnyNotifier<StateT, ValueT> {
-  $ClassProviderElement<AnyNotifier<StateT, ValueT>, StateT, Object?, Object?>?
-  elementOrNull() => _element;
+  $ClassProviderElement<AnyNotifier<StateT, ValueT>, StateT, Object?, Object?>? elementOrNull() => _element;
 
-  $ClassProviderElement<AnyNotifier<StateT, ValueT>, StateT, Object?, Object?>
-  requireElement() {
+  $ClassProviderElement<AnyNotifier<StateT, ValueT>, StateT, Object?, Object?> requireElement() {
     final element = elementOrNull();
     if (element == null) {
       throw StateError(uninitializedElementError);
@@ -402,10 +386,7 @@ abstract base class $ClassProvider<
   Refreshable<NotifierT> get notifier {
     return ProviderElementProxy<NotifierT, StateT>(
       this,
-      (element) =>
-          (element
-                  as $ClassProviderElement<NotifierT, StateT, ValueT, CreatedT>)
-              .classListenable,
+      (element) => (element as $ClassProviderElement<NotifierT, StateT, ValueT, CreatedT>).classListenable,
     );
   }
 
@@ -419,19 +400,12 @@ abstract base class $ClassProvider<
     NotifierT Function()? create,
     RunNotifierBuild<NotifierT, CreatedT>? runNotifierBuildOverride,
   }) {
-    return _ClassProviderView(
-      this,
-      create: create,
-      runNotifierBuildOverride: runNotifierBuildOverride,
-    );
+    return _ClassProviderView(this, create: create, runNotifierBuildOverride: runNotifierBuildOverride);
   }
 
   /// {@macro riverpod.override_with}
   Override overrideWith(NotifierT Function() create) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $view(create: create),
-    );
+    return $ProviderOverride(origin: this, providerOverride: $view(create: create));
   }
 
   /// {@template riverpod.override_with_build}
@@ -444,10 +418,7 @@ abstract base class $ClassProvider<
   /// aspects of the provider.
   /// {@endtemplate}
   Override overrideWithBuild(RunNotifierBuild<NotifierT, CreatedT> build) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $view(runNotifierBuildOverride: build),
-    );
+    return $ProviderOverride(origin: this, providerOverride: $view(runNotifierBuildOverride: build));
   }
 
   /// @nodoc
@@ -463,32 +434,21 @@ abstract base class $ClassProvider<
   $createElement($ProviderPointer pointer);
 }
 
-final class _ClassProviderView<
-  NotifierT extends AnyNotifier<StateT, ValueT>,
-  StateT,
-  ValueT,
-  CreatedT
->
+final class _ClassProviderView<NotifierT extends AnyNotifier<StateT, ValueT>, StateT, ValueT, CreatedT>
     extends $ClassProvider<NotifierT, StateT, ValueT, CreatedT> {
-  _ClassProviderView(
-    this._inner, {
-    RunNotifierBuild<NotifierT, CreatedT>? runNotifierBuildOverride,
-    NotifierT Function()? create,
-  }) : _create = create,
-       _runNotifierBuildOverride = runNotifierBuildOverride,
-       assert(
-         create != null || runNotifierBuildOverride != null,
-         'Either `create` or `runNotifierBuildOverride` must be provided.',
-       ),
-       super(
-         name: _inner.name,
-         from: _inner.from,
-         argument: _inner.argument,
-         dependencies: _inner.dependencies,
-         $allTransitiveDependencies: _inner.$allTransitiveDependencies,
-         retry: _inner.retry,
-         isAutoDispose: _inner.isAutoDispose,
-       );
+  _ClassProviderView(this._inner, {RunNotifierBuild<NotifierT, CreatedT>? runNotifierBuildOverride, NotifierT Function()? create})
+    : _create = create,
+      _runNotifierBuildOverride = runNotifierBuildOverride,
+      assert(create != null || runNotifierBuildOverride != null, 'Either `create` or `runNotifierBuildOverride` must be provided.'),
+      super(
+        name: _inner.name,
+        from: _inner.from,
+        argument: _inner.argument,
+        dependencies: _inner.dependencies,
+        $allTransitiveDependencies: _inner.$allTransitiveDependencies,
+        retry: _inner.retry,
+        isAutoDispose: _inner.isAutoDispose,
+      );
 
   final $ClassProvider<NotifierT, StateT, ValueT, CreatedT> _inner;
 
@@ -505,9 +465,7 @@ final class _ClassProviderView<
   /// @nodoc
   @internal
   @override
-  $ClassProviderElement<NotifierT, StateT, ValueT, CreatedT> $createElement(
-    $ProviderPointer pointer,
-  ) {
+  $ClassProviderElement<NotifierT, StateT, ValueT, CreatedT> $createElement($ProviderPointer pointer) {
     return _inner.$createElement(pointer)
       ..provider = this
       .._runNotifierBuildOverride = _runNotifierBuildOverride;
@@ -528,9 +486,7 @@ abstract class $ClassProviderElement<
 > //
     extends ProviderElement<StateT, ValueT>
     with ElementWithFuture {
-  $ClassProviderElement(super.pointer)
-    : provider =
-          pointer.origin as $ClassProvider<NotifierT, StateT, ValueT, CreatedT>;
+  $ClassProviderElement(super.pointer) : provider = pointer.origin as $ClassProvider<NotifierT, StateT, ValueT, CreatedT>;
 
   @override
   $ClassProvider<NotifierT, StateT, ValueT, CreatedT> provider;
@@ -561,10 +517,7 @@ abstract class $ClassProviderElement<
         try {
           switch (_runNotifierBuildOverride) {
             case final override?:
-              whenComplete = handleCreate(
-                ref,
-                () => override(ref, result.value),
-              );
+              whenComplete = handleCreate(ref, () => override(ref, result.value));
             case null:
               whenComplete = result.value.runBuild();
           }
@@ -584,18 +537,12 @@ abstract class $ClassProviderElement<
 
   @override
   bool updateShouldNotify(StateT previous, StateT next) {
-    return classListenable.result?.value?.updateShouldNotify(previous, next) ??
-        super.updateShouldNotify(previous, next);
+    return classListenable.result?.value?.updateShouldNotify(previous, next) ?? super.updateShouldNotify(previous, next);
   }
 
   @override
   ProviderObserverContext _currentObserverContext() {
-    return ProviderObserverContext(
-      origin,
-      container,
-      this,
-      mutation: _currentMutationContext(),
-    );
+    return ProviderObserverContext(origin, container, this, mutation: _currentMutationContext());
   }
 
   @override
