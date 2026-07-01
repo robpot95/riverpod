@@ -296,7 +296,8 @@ extension NotifierPersistX<StateT, ValueT> on AnyNotifier<StateT, ValueT> {
 abstract class $AsyncNotifierBase<ValueT> extends AnyNotifier<AsyncValue<ValueT>, ValueT> {
   @override
   void _setStateFromValue(ValueT value) {
-    state = AsyncLoading._((progress: state.progress), value: (value, kind: DataKind.cache, source: DataSource.liveOrRefresh), error: state._error);
+    //  state = AsyncLoading._((progress: state.progress), value: (value, kind: DataKind.cache, source: DataSource.liveOrRefresh), error: state._error);
+    state = AsyncData._((value, kind: DataKind.cache, source: DataSource.liveOrRefresh), error: state._error, loading: (progress: state.progress));
   }
 
   @override
