@@ -257,6 +257,10 @@ extension NotifierPersistX<StateT, ValueT> on AnyNotifier<StateT, ValueT> {
         // Let's read the Database
         final futureOr = storage.then(
           (storage) => storage.read(key).then((value) {
+            if (!ref.mounted) {
+              return null;
+            }
+
             // The state was initialized during the decoding, abort
             if (didChange) return null;
             // Nothing to decode
