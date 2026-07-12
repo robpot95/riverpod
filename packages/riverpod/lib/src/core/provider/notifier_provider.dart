@@ -338,7 +338,9 @@ abstract class $SyncNotifierBase<ValueT> extends AnyNotifier<ValueT, ValueT> {
     StorageOptions options, {
     EncodedT? Function(AsyncError<ValueT> error)? encodeError,
   }) {
-    return storage.then((storage) => storage.write(key, encode(state), options));
+    if (state != null) {
+      return storage.then((storage) => storage.write(key, encode(state), options));
+    }
   }
 }
 
