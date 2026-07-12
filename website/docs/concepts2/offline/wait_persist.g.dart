@@ -94,6 +94,8 @@ abstract class _$TodoList extends _$TodoListBase {
     String? key,
     String Function(List<Todo> state)? encode,
     List<Todo> Function(String encoded)? decode,
+    String? Function(AsyncError<List<Todo>> error)? encodeError,
+    bool Function(List<Todo> state)? shouldPersist,
     StorageOptions options = const StorageOptions(),
   }) {
     return NotifierPersistX(this).persist<String, String>(
@@ -108,6 +110,8 @@ abstract class _$TodoList extends _$TodoListBase {
                 .map((e) => Todo.fromJson(e as Map<String, Object?>))
                 .toList();
           },
+      encodeError: encodeError,
+      shouldPersist: shouldPersist,
       options: options,
     );
   }
