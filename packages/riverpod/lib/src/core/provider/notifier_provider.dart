@@ -97,10 +97,10 @@ abstract class AnyNotifier<StateT, ValueT> {
     FutureOr<Storage<KeyT, EncodedT>> storage,
     KeyT key,
     EncodedT Function(ValueT state) encode,
-    StorageOptions options, {
     EncodedT? Function(AsyncError<ValueT> error)? encodeError,
     bool Function(ValueT state)? shouldPersist,
-  });
+    StorageOptions options,
+  );
 
   /// Listens to changes on the value exposed by this provider.
   ///
@@ -245,7 +245,7 @@ extension NotifierPersistX<StateT, ValueT> on AnyNotifier<StateT, ValueT> {
       didChange = true;
 
       try {
-        final futureOr = _callEncode(storage, key, encode, options, encodeError: encodeError, shouldPersist: shouldPersist);
+        final futureOr = _callEncode(storage, key, encode, encodeError, shouldPersist, options);
         if (futureOr is Future) {
           unawaited(futureOr.onError(ref.container.defaultOnError));
         }
@@ -309,10 +309,10 @@ abstract class $AsyncNotifierBase<ValueT> extends AnyNotifier<AsyncValue<ValueT>
     FutureOr<Storage<KeyT, EncodedT>> storage,
     KeyT key,
     EncodedT Function(ValueT state) encode,
-    StorageOptions options, {
     EncodedT? Function(AsyncError<ValueT> errorState)? encodeError,
     bool Function(ValueT state)? shouldPersist,
-  }) {
+    StorageOptions options,
+  ) {
     switch (state) {
       case AsyncLoading():
         return null;
@@ -339,10 +339,10 @@ abstract class $SyncNotifierBase<ValueT> extends AnyNotifier<ValueT, ValueT> {
     FutureOr<Storage<KeyT, EncodedT>> storage,
     KeyT key,
     EncodedT Function(ValueT state) encode,
-    StorageOptions options, {
     EncodedT? Function(AsyncError<ValueT> error)? encodeError,
     bool Function(ValueT state)? shouldPersist,
-  }) {
+    StorageOptions options,
+  ) {
     final proceed = !(shouldPersist != null) || shouldPersist(state);
     if (proceed) {
       return storage.then((s) => s.write(key, encode(state), options));
