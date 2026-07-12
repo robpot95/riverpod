@@ -316,7 +316,11 @@ abstract class $AsyncNotifierBase<ValueT> extends AnyNotifier<AsyncValue<ValueT>
       case AsyncError():
         return null;
       case AsyncData(:final value):
-        return storage.then((s) => s.write(key, encode(value), options));
+        if (value != null) {
+          return storage.then((s) => s.write(key, encode(value), options));
+        } else {
+          return null;
+        }
     }
   }
 }
