@@ -521,6 +521,8 @@ abstract class _$Json extends _$JsonBase {
     String? key,
     String Function(Map<String, List<int>> state)? encode,
     Map<String, List<int>> Function(String encoded)? decode,
+    String? Function(AsyncError<Map<String, List<int>>> error)? encodeError,
+    bool Function(Map<String, List<int>> state)? shouldPersist,
     StorageOptions options = const StorageOptions(),
   }) {
     return NotifierPersistX(this).persist<String, String>(
@@ -538,6 +540,8 @@ abstract class _$Json extends _$JsonBase {
               ),
             );
           },
+      encodeError: encodeError,
+      shouldPersist: shouldPersist,
       options: options,
     );
   }
@@ -558,6 +562,8 @@ abstract class _$Json2 extends _$Json2Base {
     String? key,
     String Function(Map<String, List<int>> state)? encode,
     Map<String, List<int>> Function(String encoded)? decode,
+    String? Function(AsyncError<Map<String, List<int>>> error)? encodeError,
+    bool Function(Map<String, List<int>> state)? shouldPersist,
     StorageOptions options = const StorageOptions(),
   }) {
     return NotifierPersistX(this).persist<String, String>(
@@ -575,6 +581,8 @@ abstract class _$Json2 extends _$Json2Base {
               ),
             );
           },
+      encodeError: encodeError,
+      shouldPersist: shouldPersist,
       options: options,
     );
   }
@@ -595,6 +603,8 @@ abstract class _$CustomJson extends _$CustomJsonBase {
     String? key,
     String Function(Map<String, Bar> state)? encode,
     Map<String, Bar> Function(String encoded)? decode,
+    String? Function(AsyncError<Map<String, Bar>> error)? encodeError,
+    bool Function(Map<String, Bar> state)? shouldPersist,
     StorageOptions options = const StorageOptions(),
   }) {
     return NotifierPersistX(this).persist<String, String>(
@@ -612,6 +622,8 @@ abstract class _$CustomJson extends _$CustomJsonBase {
               ),
             );
           },
+      encodeError: encodeError,
+      shouldPersist: shouldPersist,
       options: options,
     );
   }
@@ -632,6 +644,8 @@ abstract class _$CustomKey extends _$CustomKeyBase {
     String? key,
     String Function(Map<String, Bar> state)? encode,
     Map<String, Bar> Function(String encoded)? decode,
+    String? Function(AsyncError<Map<String, Bar>> error)? encodeError,
+    bool Function(Map<String, Bar> state)? shouldPersist,
     StorageOptions options = const StorageOptions(),
   }) {
     return NotifierPersistX(this).persist<String, String>(
@@ -649,6 +663,8 @@ abstract class _$CustomKey extends _$CustomKeyBase {
               ),
             );
           },
+      encodeError: encodeError,
+      shouldPersist: shouldPersist,
       options: options,
     );
   }
@@ -671,6 +687,8 @@ abstract class _$CustomJsonWithArgs extends _$CustomJsonWithArgsBase {
     String? key,
     String Function(Map<String, Bar> state)? encode,
     Map<String, Bar> Function(String encoded)? decode,
+    String? Function(AsyncError<Map<String, Bar>> error)? encodeError,
+    bool Function(Map<String, Bar> state)? shouldPersist,
     StorageOptions options = const StorageOptions(),
   }) {
     return NotifierPersistX(this).persist<String, String>(
@@ -688,6 +706,8 @@ abstract class _$CustomJsonWithArgs extends _$CustomJsonWithArgsBase {
               ),
             );
           },
+      encodeError: encodeError,
+      shouldPersist: shouldPersist,
       options: options,
     );
   }
@@ -708,6 +728,8 @@ abstract class _$PassEncodeDecodeByHand extends _$PassEncodeDecodeByHandBase {
     String? key,
     String Function(Map<String, String> state)? encode,
     Map<String, String> Function(String encoded)? decode,
+    String? Function(AsyncError<Map<String, String>> error)? encodeError,
+    bool Function(Map<String, String> state)? shouldPersist,
     StorageOptions options = const StorageOptions(),
   }) {
     return NotifierPersistX(this).persist<String, String>(
@@ -720,6 +742,8 @@ abstract class _$PassEncodeDecodeByHand extends _$PassEncodeDecodeByHandBase {
             final e = $jsonCodex.decode(encoded);
             return (e as Map).map((k, v) => MapEntry(k as String, v as String));
           },
+      encodeError: encodeError,
+      shouldPersist: shouldPersist,
       options: options,
     );
   }

@@ -18,9 +18,7 @@ class JsonGenerator extends ParserGenerator<JsonPersist> {
   FutureOr<String> generateForUnit(List<CompilationUnit> compilationUnits) {
     if (compilationUnits.isEmpty) return '';
 
-    final buffer = AnalyzerBuffer.part(
-      compilationUnits.first.declaredFragment!.element,
-    );
+    final buffer = AnalyzerBuffer.part(compilationUnits.first.declaredFragment!.element);
 
     for (final unit in compilationUnits.expand((e) => e.declarations)) {
       final provider = unit.provider;
@@ -30,9 +28,7 @@ class JsonGenerator extends ParserGenerator<JsonPersist> {
         continue;
       }
 
-      final hasAnnotation = provider.node.metadata.any(
-        (e) => e.annotationOfType(jsonPersistType, exact: true) != null,
-      );
+      final hasAnnotation = provider.node.metadata.any((e) => e.annotationOfType(jsonPersistType, exact: true) != null);
       // Not annotated by @JsonPersist
       if (!hasAnnotation) continue;
 
@@ -42,18 +38,11 @@ class JsonGenerator extends ParserGenerator<JsonPersist> {
     return buffer.toString();
   }
 
-  void _generateNotifier(
-    AnalyzerBuffer buffer,
-    ClassBasedProviderDeclaration provider,
-  ) {
-    if (provider.node.namePart.typeParameters?.typeParameters.isNotEmpty ??
-        false) {
+  void _generateNotifier(AnalyzerBuffer buffer, ClassBasedProviderDeclaration provider) {
+    if (provider.node.namePart.typeParameters?.typeParameters.isNotEmpty ?? false) {
       throw InvalidGenerationSourceError(
         'Encoding generic notifiers is currently not supported',
-        element:
-            provider.node.declaredFragment!.libraryFragment.element.classes
-                .where((e) => e.name == provider.name.lexeme)
-                .firstOrNull,
+        element: provider.node.declaredFragment!.libraryFragment.element.classes.where((e) => e.name == provider.name.lexeme).firstOrNull,
         node: provider.node,
       );
     }
@@ -112,14 +101,16 @@ abstract class $notifierClass$genericsDefinition extends $baseClass {
   /// A variant of [persist], for JSON-specific encoding.
   ///
   /// You can override [key] to customize the key used for storage.
-  PersistResult persist(
+PersistResult persist(
     FutureOr<Storage<String, String>> storage, {
     String? key,
     String Function(${provider.providerElement.valueTypeNode.toCode()} state)? encode,
     ${provider.providerElement.valueTypeNode.toCode()} Function(String encoded)? decode,
+    String? Function(AsyncError<${provider.providerElement.valueTypeNode.toCode()}> error)? encodeError,
+    bool Function(${provider.providerElement.valueTypeNode.toCode()} state)? shouldPersist,
     StorageOptions options = const StorageOptions(),
   }) {
-    return NotifierPersistX(this).persist<String, String>(
+   return NotifierPersistX(this).persist<String, String>(
       storage,
       key: key ?? this.key,
       encode: encode ?? \$jsonCodex.encode,
@@ -127,6 +118,8 @@ abstract class $notifierClass$genericsDefinition extends $baseClass {
         final e = \$jsonCodex.decode(encoded);
         return $decoded;
       },
+      encodeError: encodeError,
+      shouldPersist: shouldPersist,
       options: options,
     );
   }
