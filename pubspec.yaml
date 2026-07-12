@@ -32,7 +32,6 @@ workspace:
   - packages/riverpod_lint
   # Custom_lint doesn't handle plugins from workspaces yet
   # - packages/riverpod_lint_flutter_test
-  - packages/riverpod_sqflite/example
   - packages/riverpod_sqflite
   - tools/generate_providers
   - other_projects/devtool_debug_app
