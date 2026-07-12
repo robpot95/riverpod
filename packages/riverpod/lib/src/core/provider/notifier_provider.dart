@@ -99,6 +99,7 @@ abstract class AnyNotifier<StateT, ValueT> {
     EncodedT Function(ValueT state) encode,
     StorageOptions options, {
     EncodedT? Function(AsyncError<ValueT> error)? encodeError,
+    bool Function(ValueT state)? shouldPersist,
   });
 
   /// Listens to changes on the value exposed by this provider.
@@ -234,6 +235,7 @@ extension NotifierPersistX<StateT, ValueT> on AnyNotifier<StateT, ValueT> {
     required EncodedT Function(ValueT state) encode,
     required ValueT Function(EncodedT encoded) decode,
     EncodedT? Function(AsyncError<ValueT> error)? encodeError,
+    bool Function(ValueT state)? shouldPersist,
     StorageOptions options = const StorageOptions(),
   }) {
     _debugAssertNoDuplicateKey(key, this);
@@ -243,7 +245,7 @@ extension NotifierPersistX<StateT, ValueT> on AnyNotifier<StateT, ValueT> {
       didChange = true;
 
       try {
-        final futureOr = _callEncode(storage, key, encode, options, encodeError: encodeError);
+        final futureOr = _callEncode(storage, key, encode, options, encodeError: encodeError, shouldPersist: shouldPersist);
         if (futureOr is Future) {
           unawaited(futureOr.onError(ref.container.defaultOnError));
         }
@@ -309,6 +311,7 @@ abstract class $AsyncNotifierBase<ValueT> extends AnyNotifier<AsyncValue<ValueT>
     EncodedT Function(ValueT state) encode,
     StorageOptions options, {
     EncodedT? Function(AsyncError<ValueT> errorState)? encodeError,
+    bool Function(ValueT state)? shouldPersist,
   }) {
     switch (state) {
       case AsyncLoading():
@@ -316,7 +319,8 @@ abstract class $AsyncNotifierBase<ValueT> extends AnyNotifier<AsyncValue<ValueT>
       case AsyncError():
         return null;
       case AsyncData(:final value):
-        if (value != null) {
+        final proceed = !(shouldPersist != null) || shouldPersist(value);
+        if (proceed) {
           return storage.then((s) => s.write(key, encode(value), options));
         } else {
           return null;
@@ -337,9 +341,13 @@ abstract class $SyncNotifierBase<ValueT> extends AnyNotifier<ValueT, ValueT> {
     EncodedT Function(ValueT state) encode,
     StorageOptions options, {
     EncodedT? Function(AsyncError<ValueT> error)? encodeError,
+    bool Function(ValueT state)? shouldPersist,
   }) {
-    if (state != null) {
-      return storage.then((storage) => storage.write(key, encode(state), options));
+    final proceed = !(shouldPersist != null) || shouldPersist(state);
+    if (proceed) {
+      return storage.then((s) => s.write(key, encode(state), options));
+    } else {
+      return null;
     }
   }
 }
