@@ -1,4 +1,36 @@
+## Unreleased patch
+
+- Require Dart 3.13: the analysis server protocol needed by `analysis_server_plugin` 0.3.18 (pulled in by the analyzer 13 upgrade) ships in Dart 3.13. On earlier SDKs the plugin previously hung `dart analyze`; now version solving fails with a clear error instead (#4839).
+
+## 3.1.8 - 2026-07-28
+
+### Dependency changes
+
+- `riverpod` upgraded to `3.4.2`
+
+## 3.1.7 - 2026-07-27
+
+### Dependency changes
+
+- `riverpod_analyzer_utils` upgraded to `1.0.0-dev.11`
+
+## 3.1.6 - 2026-07-26
+
+### Dependency changes
+
+- `riverpod` upgraded to `3.4.1`
+
+## 3.1.5 - 2026-07-26
+
+- Upgraded `analyzer` to `<15.0.0`
+- Fixed `provider_parameters` false positive for extension type arguments.
+
+### Dependency changes
+
+- `riverpod` upgraded to `3.4.0`
+
 ## 3.1.4 - 2026-06-10
+
 ### Dependency changes
 
 - `riverpod` upgraded to `3.3.2`
@@ -371,4 +403,3 @@ Fix quick-fix for provider_dependencies
 Initial release
 
 <!-- cSpell:ignoreRegExp @\w+ -->
-

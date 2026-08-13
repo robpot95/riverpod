@@ -1,4 +1,27 @@
+## Unreleased fix
+
+- Moved `test` to `dev_dependencies`. It was never imported from `lib/`.
+  (thanks to @samithahansaka)
+
+## 0.4.6 - 2026-07-28
+### Dependency changes
+
+- `riverpod` upgraded to `3.4.2`
+
+## 0.4.5 - 2026-07-26
+
+### Dependency changes
+
+- `riverpod` upgraded to `3.4.1`
+
+## 0.4.4 - 2026-07-26
+
+### Dependency changes
+
+- `riverpod` upgraded to `3.4.0`
+
 ## 0.4.3 - 2026-06-10
+
 ### Dependency changes
 
 - `riverpod` upgraded to `3.3.2`

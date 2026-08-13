@@ -52,10 +52,9 @@ class JsonGenerator extends ParserGenerator<JsonPersist> {
 
     final genericsDefinition = provider.genericsDefinition();
 
-    final resolvedKey =
-        !provider.providerElement.isFamily
-            ? 'const resolvedKey = "${provider.name}";'
-            : '''
+    final resolvedKey = !provider.providerElement.isFamily
+        ? 'const resolvedKey = "${provider.name}";'
+        : '''
     late final args = ${provider.argumentToRecord()};
     late final resolvedKey = '${provider.name}(\$args)';
 ''';

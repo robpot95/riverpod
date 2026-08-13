@@ -15,7 +15,10 @@ final allFilterKey = UniqueKey();
 ///
 /// We are using [NotifierProvider] here as a `List<Todo>` is a complex
 /// object, with advanced business logic like how to edit a todo.
-final todoListProvider = NotifierProvider<TodoList, List<Todo>>(TodoList.new);
+final todoListProvider = NotifierProvider<TodoList, List<Todo>>(
+  TodoList.new,
+  name: 'todoListProvider',
+);
 
 /// The different ways to filter the list of todos
 enum TodoListFilter { all, active, completed }
@@ -24,7 +27,10 @@ enum TodoListFilter { all, active, completed }
 ///
 /// We use [StateProvider] here as there is no fancy logic behind manipulating
 /// the value since it's just enum.
-final todoListFilter = StateProvider((_) => TodoListFilter.all);
+final todoListFilter = StateProvider(
+  (_) => TodoListFilter.all,
+  name: 'todoListFilter',
+);
 
 /// The number of uncompleted todos
 ///
@@ -36,7 +42,7 @@ final todoListFilter = StateProvider((_) => TodoListFilter.all);
 /// number of uncompleted todos doesn't (such as when editing a todo).
 final uncompletedTodosCount = Provider<int>((ref) {
   return ref.watch(todoListProvider).where((todo) => !todo.completed).length;
-});
+}, name: 'uncompletedTodosCount');
 
 /// The list of todos after applying of [todoListFilter].
 ///
@@ -54,7 +60,7 @@ final filteredTodos = Provider<List<Todo>>((ref) {
     case TodoListFilter.all:
       return todos;
   }
-});
+}, name: 'filteredTodos');
 
 void main() {
   runApp(const ProviderScope(child: MyApp()));
@@ -143,10 +149,8 @@ class Toolbar extends HookConsumerWidget {
             key: allFilterKey,
             message: 'All todos',
             child: TextButton(
-              onPressed:
-                  () =>
-                      ref.read(todoListFilter.notifier).state =
-                          TodoListFilter.all,
+              onPressed: () =>
+                  ref.read(todoListFilter.notifier).state = TodoListFilter.all,
               style: ButtonStyle(
                 visualDensity: VisualDensity.compact,
                 foregroundColor: WidgetStatePropertyAll(
@@ -160,10 +164,8 @@ class Toolbar extends HookConsumerWidget {
             key: activeFilterKey,
             message: 'Only uncompleted todos',
             child: TextButton(
-              onPressed:
-                  () =>
-                      ref.read(todoListFilter.notifier).state =
-                          TodoListFilter.active,
+              onPressed: () => ref.read(todoListFilter.notifier).state =
+                  TodoListFilter.active,
               style: ButtonStyle(
                 visualDensity: VisualDensity.compact,
                 foregroundColor: WidgetStatePropertyAll(
@@ -177,10 +179,8 @@ class Toolbar extends HookConsumerWidget {
             key: completedFilterKey,
             message: 'Only completed todos',
             child: TextButton(
-              onPressed:
-                  () =>
-                      ref.read(todoListFilter.notifier).state =
-                          TodoListFilter.completed,
+              onPressed: () => ref.read(todoListFilter.notifier).state =
+                  TodoListFilter.completed,
               style: ButtonStyle(
                 visualDensity: VisualDensity.compact,
                 foregroundColor: WidgetStatePropertyAll(
@@ -223,6 +223,7 @@ class Title extends StatelessWidget {
 /// impacted widgets rebuilds, instead of the entire list of items.
 final _currentTodo = Provider<Todo>(
   dependencies: const [],
+  name: '_currentTodo',
   (ref) => throw UnimplementedError(),
 );
 
@@ -261,17 +262,16 @@ class TodoItem extends HookConsumerWidget {
           },
           leading: Checkbox(
             value: todo.completed,
-            onChanged:
-                (value) => ref.read(todoListProvider.notifier).toggle(todo.id),
+            onChanged: (value) =>
+                ref.read(todoListProvider.notifier).toggle(todo.id),
           ),
-          title:
-              itemIsFocused
-                  ? TextField(
-                    autofocus: true,
-                    focusNode: textFieldFocusNode,
-                    controller: textEditingController,
-                  )
-                  : Text(todo.description),
+          title: itemIsFocused
+              ? TextField(
+                  autofocus: true,
+                  focusNode: textFieldFocusNode,
+                  controller: textEditingController,
+                )
+              : Text(todo.description),
         ),
       ),
     );
