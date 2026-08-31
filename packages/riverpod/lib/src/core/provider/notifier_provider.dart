@@ -302,8 +302,8 @@ extension NotifierPersistX<StateT, ValueT> on AnyNotifier<StateT, ValueT> {
 abstract class $AsyncNotifierBase<ValueT> extends AnyNotifier<AsyncValue<ValueT>, ValueT> {
   @override
   void _setStateFromValue(ValueT value) {
-    // state = AsyncLoading._((progress: state.progress), value: (value, kind: DataKind.cache, source: DataSource.liveOrRefresh), error: state._error);
-    state = AsyncData._((value, kind: DataKind.cache, source: DataSource.liveOrRefresh), error: state._error, loading: (progress: state.progress));
+    state = AsyncLoading._((progress: state.progress), value: (value, kind: DataKind.cache, source: DataSource.liveOrRefresh), error: state._error);
+    // state = AsyncData._((value, kind: DataKind.cache, source: DataSource.liveOrRefresh), error: state._error, loading: (progress: state.progress));
   }
 
   @override
@@ -423,7 +423,10 @@ abstract base class $ClassProvider<
 
   /// {@macro riverpod.override_with}
   Override overrideWith(NotifierT Function() create) {
-    return $ProviderOverride(origin: this, providerOverride: $view(create: create));
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $view(create: create),
+    );
   }
 
   /// {@template riverpod.override_with_build}
@@ -436,7 +439,10 @@ abstract base class $ClassProvider<
   /// aspects of the provider.
   /// {@endtemplate}
   Override overrideWithBuild(RunNotifierBuild<NotifierT, CreatedT> build) {
-    return $ProviderOverride(origin: this, providerOverride: $view(runNotifierBuildOverride: build));
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $view(runNotifierBuildOverride: build),
+    );
   }
 
   /// @nodoc
