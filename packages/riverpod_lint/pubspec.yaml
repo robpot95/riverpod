@@ -25,7 +25,7 @@ dependencies:
   collection: ^1.16.0
   meta: ^1.15.0
   path: ^1.8.1
-  riverpod: 3.4.2
+  riverpod: 3.4.3
   riverpod_analyzer_utils: 1.0.0-dev.11
 
   source_span: ^1.8.0
