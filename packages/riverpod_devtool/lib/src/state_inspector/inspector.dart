@@ -1,14 +1,11 @@
-import 'package:devtools_app_shared/utils.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hooks_riverpod/misc.dart';
-import 'package:vm_service/vm_service.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:riverpod_devtool_core/riverpod_devtool_core.dart';
+import 'package:vm_service/vm_service.dart' show Sentinel, SentinelKind;
 
-import '../frame_view.dart';
-import '../package_name_provider.dart';
 import '../tree_list.dart';
-import '../vm_service.dart';
 
 class Inspector extends ConsumerStatefulWidget {
   const Inspector({super.key, required this.object});
@@ -55,31 +52,27 @@ final class _ClosingNode extends _VariableNode {
   final String symbol;
 }
 
-final _openedVariableNodesProvider =
-    NotifierProvider<_OpenedVariableNodes<CachedObject>, Set<CachedObject>>(
+// Each tree owns its expansion state. Paths contain only field names and
+// collection indices, so keeping them does not retain previous frame values.
+final _openedVariableNodesProvider = NotifierProvider.autoDispose
+    .family<_OpenedVariableNodes, Set<Object>, Object>(
       _OpenedVariableNodes.new,
     );
 
-final _expandedStringsProvider =
-    NotifierProvider<_OpenedVariableNodes<CachedObject>, Set<CachedObject>>(
-      _OpenedVariableNodes.new,
-    );
+class _OpenedVariableNodes extends Notifier<Set<Object>> {
+  _OpenedVariableNodes(this.scope);
 
-class _OpenedVariableNodes<ElementT> extends Notifier<Set<ElementT>> {
+  final Object scope;
+
   @override
-  Set<ElementT> build() => {};
+  Set<Object> build() => {};
 
-  void toggle(ElementT byte) {
-    if (state.contains(byte)) {
-      state = {...state}..remove(byte);
+  void toggle(Object path) {
+    if (state.contains(path)) {
+      state = {...state}..remove(path);
     } else {
-      state = {...state}..add(byte);
+      state = {...state}..add(path);
     }
-  }
-
-  void remove(ElementT byte) {
-    // We're only cleaning memory. No need to notify listeners.
-    state.remove(byte);
   }
 }
 
@@ -115,16 +108,18 @@ _ClosingNode? _resolveClosingNode(
   }
 }
 
-final ProviderFamily<_VariableNode, (CachedObject, int level)>
+final ProviderFamily<_VariableNode, (CachedObject, int level, Object scope)>
 _variableNodeForObjectProvider = .new(
   name: '_variableNodeForByte',
   isAutoDispose: true,
   (ref, args) {
-    final (object, level) = args;
+    final (object, level, scope) = args;
 
-    final variable = ref.watch(_resolvedVariableForObject(object)).value;
+    final variable = ref.watch(resolvedVariableForObjectProvider(object)).value;
     final isOpen = ref.watch(
-      _openedVariableNodesProvider.select((nodes) => nodes.contains(object)),
+      _openedVariableNodesProvider(
+        scope,
+      ).select((nodes) => nodes.contains(object.inspectionPath)),
     );
 
     final closingNode = _resolveClosingNode(variable, isOpen, level);
@@ -137,7 +132,7 @@ _variableNodeForObjectProvider = .new(
       case ByteVariable<ResolvedVariable>(:final instance):
         final _children = instance.children.map((child) {
           final childNode = ref.watch(
-            _variableNodeForObjectProvider((child, level + 1)),
+            _variableNodeForObjectProvider((child, level + 1, scope)),
           );
 
           switch (childNode) {
@@ -185,10 +180,7 @@ class SliverVariableTree extends ConsumerStatefulWidget {
 }
 
 class _SliverVariableTreeState extends ConsumerState<SliverVariableTree> {
-  late final notifier = ref.listenManual(
-    _openedVariableNodesProvider,
-    (_, _) {},
-  );
+  final _scope = Object();
 
   final _disposable = Disposable();
   late final nodes = TreeList<_VariableNode>();
@@ -198,7 +190,7 @@ class _SliverVariableTreeState extends ConsumerState<SliverVariableTree> {
     assert(sub == null, 'Listener already exists for $byte');
 
     sub = ref.listenManual(
-      _variableNodeForObjectProvider((byte, 0)),
+      _variableNodeForObjectProvider((byte, 0, _scope)),
       fireImmediately: true,
       (_, resolvedVariableByte) {
         late final indexForNode = nodes.indexWhere(
@@ -226,6 +218,7 @@ class _SliverVariableTreeState extends ConsumerState<SliverVariableTree> {
   void initState() {
     super.initState();
 
+    ref.listenManual(_openedVariableNodesProvider(_scope), (_, _) {});
     _listen(widget.object);
   }
 
@@ -270,7 +263,7 @@ class _SliverVariableTreeState extends ConsumerState<SliverVariableTree> {
                 EdgeInsets.only(left: 20.0 * node.level);
 
             final openNotifier = ref.watch(
-              _openedVariableNodesProvider.notifier,
+              _openedVariableNodesProvider(_scope).notifier,
             );
 
             return Padding(
@@ -283,11 +276,11 @@ class _SliverVariableTreeState extends ConsumerState<SliverVariableTree> {
                   shouldShowExpansible: true,
                   label: node.object.label,
                   isOpen: ref.watch(
-                    _openedVariableNodesProvider.select(
-                      (nodes) => nodes.contains(node.object),
+                    _openedVariableNodesProvider(_scope).select(
+                      (nodes) => nodes.contains(node.object.inspectionPath),
                     ),
                   ),
-                  open: () => openNotifier.toggle(node.object),
+                  open: () => openNotifier.toggle(node.object.inspectionPath),
                 ),
               },
             );
@@ -319,7 +312,12 @@ class _ByteTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (byte) {
-      ByteError(:final error) => ByteErrorTile(error: error, label: label),
+      ByteError(:final error) => ByteErrorTile(
+        error: error,
+        label: label,
+        isExpanded: isOpen,
+        onToggle: open,
+      ),
       ByteVariable(:final instance) => _ResolvedVariableTile(
         variable: instance,
         isOpen: isOpen,
@@ -332,19 +330,34 @@ class _ByteTile extends StatelessWidget {
 }
 
 class ByteErrorTile extends StatefulWidget {
-  const ByteErrorTile({super.key, required this.error, required this.label});
+  const ByteErrorTile({
+    super.key,
+    required this.error,
+    required this.label,
+    this.isExpanded,
+    this.onToggle,
+  });
 
   final ByteErrorType error;
   final String? label;
+  final bool? isExpanded;
+  final VoidCallback? onToggle;
 
   @override
   State<ByteErrorTile> createState() => _ByteErrorTileState();
 }
 
 class _ByteErrorTileState extends State<ByteErrorTile> {
-  var _isExpanded = false;
+  var _localExpanded = false;
+  bool get _isExpanded => widget.isExpanded ?? _localExpanded;
 
-  void _toggle() => setState(() => _isExpanded = !_isExpanded);
+  void _toggle() {
+    if (widget.onToggle case final onToggle?) {
+      onToggle();
+    } else {
+      setState(() => _localExpanded = !_localExpanded);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -439,49 +452,31 @@ class _ResolvedVariableTile extends StatelessWidget {
           style: const TextStyle(color: _NodeTileTheme.boolColor),
         );
       case StringVariable(:final value):
-        content = Consumer(
-          builder: (context, ref, _) {
-            final isExpanded = ref.watch(
-              _expandedStringsProvider.select(
-                (nodes) => nodes.contains(variable.object),
-              ),
-            );
-            final expandedNotifier = ref.watch(
-              _expandedStringsProvider.notifier,
-            );
+        final displayValue = isOpen
+            ? value
+            : value
+                  .replaceAll('\n', r'\n')
+                  .replaceAll('\r', r'\r')
+                  .replaceAll('\t', r'\t');
 
-            final displayValue = isExpanded
-                ? value
-                : value
-                      .replaceAll('\n', r'\n')
-                      .replaceAll('\r', r'\r')
-                      .replaceAll('\t', r'\t');
-
-            final hasEscapeChars =
-                value.contains('\n') ||
-                value.contains('\r') ||
-                value.contains('\t');
-            final textWidget = Text(
-              '"${displayValue.escape('"')}"',
-              style: const TextStyle(color: _NodeTileTheme.stringColor),
-              maxLines: isExpanded ? null : 1,
-              overflow: isExpanded ? null : TextOverflow.ellipsis,
-            );
-
-            if (hasEscapeChars) {
-              return _ExpansibleTile(
-                isExpanded: isExpanded,
-                onPressed: () => expandedNotifier.toggle(variable.object),
-                child: InkWell(
-                  onTap: () => expandedNotifier.toggle(variable.object),
-                  child: textWidget,
-                ),
-              );
-            }
-
-            return textWidget;
-          },
+        final hasEscapeChars =
+            value.contains('\n') ||
+            value.contains('\r') ||
+            value.contains('\t');
+        content = Text(
+          '"${displayValue.escape('"')}"',
+          style: const TextStyle(color: _NodeTileTheme.stringColor),
+          maxLines: isOpen ? null : 1,
+          overflow: isOpen ? null : TextOverflow.ellipsis,
         );
+
+        if (hasEscapeChars) {
+          content = _ExpansibleTile(
+            isExpanded: isOpen,
+            onPressed: open,
+            child: InkWell(onTap: open, child: content),
+          );
+        }
       case IntVariable(:final num value) || DoubleVariable(:final num value):
         content = Text(
           '$value',
@@ -653,119 +648,3 @@ class _NodeTileTheme {
 extension on String {
   String escape(String char) => replaceAll(char, '\\$char');
 }
-
-final _resolvedVariableForObject = FutureProvider.autoDispose
-    .family<Byte<ResolvedVariable>, CachedObject>(
-      name: '_variableInspectorProvider',
-      (ref, object) async {
-        final eval = await ref.watch(evalProvider.future);
-
-        final byte = await object.read(eval, isAlive: ref.disposable());
-
-        switch (byte) {
-          case ByteError():
-            return ByteError(byte.error);
-          case ByteVariable():
-            var instance = ResolvedVariable.fromInstance(object, byte.instance);
-
-            if (instance == null) {
-              final classId = byte.instance.classRef?.classId;
-              switch (byte.instance.classRef) {
-                // AsyncValue:
-                case ClassRef(library: final lib?, name: 'AsyncValue') ||
-                        ClassRef(library: final lib?, name: 'AsyncData') ||
-                        ClassRef(library: final lib?, name: 'AsyncError') ||
-                        ClassRef(library: final lib?, name: 'AsyncLoading')
-                    when lib.uri!.startsWith('package:riverpod/'):
-                  final isAlive = ref.disposable();
-                  final metadata = await eval.riverpodFramework.evalInstance(
-                    isAlive: isAlive,
-                    scope: {'that': byte.instance.id!},
-                    '['
-                    'that.hasValue, '
-                    'that.hasError, '
-                    'that.isLoading, '
-                    'that.isRefreshing, '
-                    'that.isReloading, '
-                    'that.progress, '
-                    ']',
-                  );
-                  if (metadata case ByteError()) {
-                    return ByteError(metadata.error);
-                  }
-                  metadata as ByteVariable<VmInstance>;
-
-                  final bytes = metadata.instance.elements!
-                      .map(Byte.instanceRefOrNull)
-                      .toList();
-                  if (bytes.whereType<ByteError<Object>>().firstOrNull
-                      case final firstError?) {
-                    return ByteError(firstError.error);
-                  }
-
-                  final [
-                    hasValue,
-                    hasError,
-                    isLoading,
-                    isRefreshing,
-                    isReloading,
-                  ] = bytes
-                      .take(5)
-                      .map(
-                        (e) => e!.require.instance.raw.valueAsString == 'true',
-                      )
-                      .toList();
-
-                  final progressRef = bytes[5]?.require.instance;
-                  final progress = switch (progressRef?.kind) {
-                    null || InstanceKind.kNull => null,
-                    _ => double.tryParse(progressRef!.valueAsString!),
-                  };
-
-                  instance = AsyncValueVariable(
-                    object,
-                    byte.instance,
-                    Uri.parse('package:riverpod/src/framework.dart'),
-                    hasValue: hasValue,
-                    hasError: hasError,
-                    progress: progress,
-                    loadingStatus: switch (null) {
-                      _ when isRefreshing => AsyncLoadingStatus.refreshing,
-                      _ when isReloading => AsyncLoadingStatus.reloading,
-                      _ when isLoading => AsyncLoadingStatus.other,
-                      _ => null,
-                    },
-                  );
-
-                case _:
-                  final getters = classId != null
-                      ? await ref.watch(gettersForClassProvider(classId).future)
-                      : const <({String name, Uri uri})>{};
-
-                  final showExternalPrivateMembers = ref.watch(
-                    inspectorSettingsProvider.select(
-                      (s) => s.showExternalPrivateMembers,
-                    ),
-                  );
-                  final currentPackageName = await ref.watch(
-                    currentPackageNameProvider.future,
-                  );
-
-                  instance = UnknownObjectVariable(
-                    object,
-                    byte.instance,
-                    children: UnknownObjectVariable.computeChildren(
-                      object,
-                      getters,
-                      byte.instance.fields ?? const [],
-                      showExternalPrivateMembers: showExternalPrivateMembers,
-                      currentPackageName: currentPackageName,
-                    ),
-                  );
-              }
-            }
-
-            return ByteVariable(instance);
-        }
-      },
-    );

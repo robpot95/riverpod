@@ -76,7 +76,7 @@ class JsonGenerator extends ParserGenerator<JsonPersist> {
           return '($name as Map).map((k, v) => MapEntry(${decode(key, 'k')}, ${decode(value, 'v')}))';
         },
         object: () {
-          return '${type.getDisplayString()}.fromJson($name as Map<String, Object?>)';
+          return '${type.toCode()}.fromJson($name as Map<String, Object?>)';
         },
       );
 
@@ -112,9 +112,9 @@ PersistResult persist(
    return NotifierPersistX(this).persist<String, String>(
       storage,
       key: key ?? this.key,
-      encode: encode ?? \$jsonCodex.encode,
+      encode: encode ?? #{{riverpod_annotation|\$jsonCodex}}.encode,
       decode: decode ?? (encoded) {
-        final e = \$jsonCodex.decode(encoded);
+        final e = #{{riverpod_annotation|\$jsonCodex}}.decode(encoded);
         return $decoded;
       },
       encodeError: encodeError,

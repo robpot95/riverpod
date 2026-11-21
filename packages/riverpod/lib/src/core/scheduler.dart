@@ -62,7 +62,6 @@ class ProviderScheduler {
 
   final _stateToDispose = <ProviderElement>[];
   final stateToRefresh = <ProviderElement>[];
-
   Completer<void>? _pendingTaskCompleter;
   Task? _pendingTask;
 
@@ -242,7 +241,7 @@ class ProviderScheduler {
       }
 
       if (element.weakDependents.isEmpty) {
-        element.container._disposeProvider(element.origin);
+        element.container._disposeElement(element);
       } else {
         // Don't delete the pointer if there are some "weak" listeners active.
         element.clearState();

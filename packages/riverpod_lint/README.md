@@ -47,7 +47,8 @@ Riverpod_lint adds various warnings with quick fixes and refactoring options, su
   - [functional\_ref (riverpod\_generator only)](#functional_ref-riverpod_generator-only)
   - [notifier\_extends (riverpod\_generator only)](#notifier_extends-riverpod_generator-only)
   - [avoid\_ref\_inside\_state\_dispose](#avoid_ref_inside_state_dispose)
-  - [avoid\_keep\_alive\_dependency\_inside\_auto\_dispose (riverpod\_generator only)](#avoid_keep_alive_dependency_inside_auto_dispose-riverpod_generator-only)
+  - [only\_use\_keep\_alive\_inside\_keep\_alive (riverpod\_generator only)](#only_use_keep_alive_inside_keep_alive-riverpod_generator-only)
+  - [prefer\_keep\_alive\_annotation (riverpod\_generator only)](#prefer_keep_alive_annotation-riverpod_generator-only)
   - [notifier\_build (riverpod\_generator only)](#notifier_build-riverpod_generator-only)
   - [riverpod\_syntax\_error (riverpod\_generator only)](#riverpod_syntax_error-riverpod_generator-only)
   - [async\_value\_nullable\_pattern](#async_value_nullable_pattern)
@@ -86,6 +87,48 @@ dart analyze
 
 ## All the lints
 
+<!-- Examples can assume:
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+// Stand-ins for the providers that riverpod_generator would generate.
+final rootProvider = Provider<int>((ref) => 0);
+final scopedProvider = Provider<int>(dependencies: const [], (ref) => 0);
+final dependencyProvider = Provider<int>((ref) => 0);
+
+final myProvider = Provider.family<int, Object?>((ref, parameter) => 0);
+
+class ClassThatOverridesEqual {
+  @override
+  bool operator ==(Object other) => other is ClassThatOverridesEqual;
+
+  @override
+  int get hashCode => 0;
+}
+
+class ClassWithNoCustomEqual {}
+
+Object? variable;
+
+class MyService {
+  void doSomething() {}
+}
+
+final provider = Provider<MyService>((ref) => MyService());
+
+class MyWidget extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<MyWidget> createState() => throw UnimplementedError();
+}
+
+Future<int> fetch() async => 0;
+
+late WidgetRef ref;
+late AsyncValue<int?> asyncValue;
+-->
+
 ### missing_provider_scope
 
 Flutter applications using Riverpod should have a ProviderScope widget at the top
@@ -93,7 +136,7 @@ of the widget tree.
 
 **Good**:
 
-```dart
+```dart no-analyze
 void main() {
   runApp(ProviderScope(child: MyApp()));
 }
@@ -101,7 +144,7 @@ void main() {
 
 **Bad**:
 
-```dart
+```dart no-analyze
 void main() {
   runApp(MyApp());
 }
@@ -128,7 +171,7 @@ int scoped(Ref ref) => 0;
 
 **Good**:
 
-```dart
+```dart no-analyze
 // No dependencies used, no need to specify "dependencies"
 @riverpod
 int example(Ref ref) => 0;
@@ -175,7 +218,7 @@ ProviderScope(
 
 **Bad**:
 
-```dart
+```dart no-analyze
 // scopedProvider isn't used and should therefore not be listed
 @Riverpod(dependencies: [scoped])
 int example(Ref ref) => 0;
@@ -227,8 +270,8 @@ void main() {
     ProviderScope(
       // This is the main ProviderScope. All providers can be overridden there
       overrides: [
-        rootProvider.overrideWith(...),
-        scopedProvider.overrideWith(...),
+        rootProvider.overrideWith((ref) => 42),
+        scopedProvider.overrideWith((ref) => 42),
       ],
       child: MyApp(),
     ),
@@ -242,7 +285,7 @@ class MyApp extends StatelessWidget {
       // This ProviderScope is not the root one, so only providers with "dependencies"
       // can be specified.
       overrides: [
-        scopedProvider.overrideWith(...),
+        scopedProvider.overrideWith((ref) => 42),
       ],
       child: Container(),
     );
@@ -262,7 +305,7 @@ class MyApp extends StatelessWidget {
       overrides: [
         // rootProvider does not specify "dependencies" and therefore should not
         // be overridden here.
-        rootProvider.overrideWith(...),
+        rootProvider.overrideWith((ref) => 42),
       ],
       child: Container(),
     );
@@ -276,7 +319,7 @@ Providers should not interact with `BuildContext`.
 
 **Good**:
 
-```dart
+```dart no-analyze
 @riverpod
 int fn(Ref ref) => 0;
 
@@ -290,8 +333,9 @@ class MyNotifier extends _$MyNotifier {
 
 **Bad**:
 
-```dart
+```dart no-analyze
 // Providers should not receive a BuildContext as a parameter.
+@riverpod
 int fn(Ref ref, BuildContext context) => 0;
 
 @riverpod
@@ -313,7 +357,7 @@ Providers' parameters should have a consistent ==. Meaning either the values sho
 // Parameters may override ==
 ref.watch(myProvider(ClassThatOverridesEqual()));
 
-// Constant objects are canonalized and therefore have a consistent ==
+// Constant objects are canonicalized and therefore have a consistent ==
 ref.watch(myProvider(const Object()));
 ref.watch(myProvider(const [42]));
 
@@ -326,7 +370,7 @@ ref.watch(myProvider(variable));
 ```dart
 // New instances passed as provider parameter must override ==
 ref.watch(myProvider(ClassWithNoCustomEqual()));
-// List/map/set litterals do not have a custom ==
+// List/map/set literals do not have a custom ==
 ref.watch(myProvider([42]));
 ```
 
@@ -341,7 +385,7 @@ Instead, you should do `ref.watch(provider).someState`.
 
 **Bad**:
 
-```dart
+```dart no-analyze
 @riverpod
 class GeneratedNotifier extends _$GeneratedNotifier {
   // Notifiers should not have public properties/getters
@@ -354,7 +398,7 @@ class GeneratedNotifier extends _$GeneratedNotifier {
 
 **Good**:
 
-```dart
+```dart no-analyze
 class Model {
   Model(this.a, this.b);
   final int a;
@@ -371,7 +415,7 @@ class MyNotifier extends _$MyNotifier {
 }
 ```
 
-```dart
+```dart no-analyze
 @riverpod
 class MyNotifier extends _$MyNotifier {
   // Alternatively, notifiers are allowed to have properties/getters if they
@@ -403,7 +447,7 @@ In that scenario, you may explicitly wrap the value in `Raw`:
 
 **Good**:
 
-```dart
+```dart no-analyze
 @riverpod
 int integer(Ref ref) => 0;
 
@@ -444,14 +488,14 @@ Functional providers must receive a ref matching the provider name as their firs
 
 **Good**:
 
-```dart
+```dart no-analyze
 @riverpod
 int myProvider(Ref ref) => 0;
 ```
 
 **Bad**:
 
-```dart
+```dart no-analyze
 // No "ref" parameter found
 @riverpod
 int myProvider() => 0;
@@ -467,7 +511,7 @@ Classes annotated by `@riverpod` must extend \_$ClassName
 
 **Good**:
 
-```dart
+```dart no-analyze
 @riverpod
 class Example extends _$Example {
   int build() => 0;
@@ -476,7 +520,7 @@ class Example extends _$Example {
 
 **Bad**:
 
-```dart
+```dart no-analyze
 // No "extends" found
 @riverpod
 class Example {
@@ -506,10 +550,12 @@ class _MyWidgetState extends ConsumerState<MyWidget> {
   }
 
   // ...
+  @override
+  Widget build(BuildContext context) => const Placeholder();
 }
 ```
 
-### avoid_keep_alive_dependency_inside_auto_dispose (riverpod_generator only)
+### only_use_keep_alive_inside_keep_alive (riverpod_generator only)
 
 Warn when a `keepAlive` provider tries to use a non-`keepAlive` provider.
 
@@ -520,12 +566,88 @@ to behave as a `keepAlive`, even though it isn't marked as such.
 
 ```dart
 @riverpod
-int nonKeepAlive(Ref ref) => 0;
+int dependency(Ref ref) => 0;
 
 @Riverpod(keepAlive: true)
-int fn(Ref ref) {
+int consumer(Ref ref) {
   // `keepAlive` providers should only depend on keepAlive providers.
-  ref.watch(nonKeepAliveProvider);
+  ref.watch(dependencyProvider);
+
+  return 0;
+}
+```
+
+**Good**: Let the consumer be disposed too.
+
+```dart
+@riverpod
+int dependency(Ref ref) => 0;
+
+@riverpod
+int consumer(Ref ref) {
+  ref.watch(dependencyProvider);
+
+  return 0;
+}
+```
+
+**Good**: Mark the dependency as `keepAlive` too. This also changes its lifetime for its other consumers.
+
+```dart
+@Riverpod(keepAlive: true)
+int dependency(Ref ref) => 0;
+
+@Riverpod(keepAlive: true)
+int consumer(Ref ref) {
+  ref.watch(dependencyProvider);
+
+  return 0;
+}
+```
+
+### prefer_keep_alive_annotation (riverpod_generator only)
+
+Warn when the body of a provider starts with `ref.keepAlive()`.
+
+Such a provider is always kept alive, which is what `@Riverpod(keepAlive: true)`
+expresses. Using the annotation lets riverpod_lint know that the provider is
+never disposed, which enables other lints such as
+`only_use_keep_alive_inside_keep_alive`.
+
+The lint only fires when `ref.keepAlive()` is the first statement of the body
+and its `KeepAliveLink` is discarded. A `keepAlive` which is conditional, which
+happens after an `await`, or whose link is closed later is a deliberate runtime
+decision that the annotation cannot express.
+
+**Bad**:
+
+```dart
+@riverpod
+int fn(Ref ref) {
+  // The provider is unconditionally kept alive.
+  ref.keepAlive();
+
+  return 0;
+}
+```
+
+**Good**:
+
+```dart
+@Riverpod(keepAlive: true)
+int fn(Ref ref) => 0;
+```
+
+**Good**:
+
+```dart
+@riverpod
+Future<int> fn(Ref ref) async {
+  final value = await fetch();
+  // Only successful results are kept alive.
+  ref.keepAlive();
+
+  return value;
 }
 ```
 
@@ -535,7 +657,7 @@ Classes annotated by `@riverpod` must have the `build` method.
 
 **Good**:
 
-```dart
+```dart no-analyze
 @riverpod
 class Example extends _$Example {
 
@@ -546,7 +668,7 @@ class Example extends _$Example {
 
 **Bad**:
 
-```dart
+```dart no-analyze
 // No "build" method found
 @riverpod
 class Example extends _$Example {}
@@ -561,7 +683,7 @@ For example, an error will be shown if a "notifier" is abstract:
 
 **Good**:
 
-```dart
+```dart no-analyze
 @riverpod
 class Example extends _$Example {
   @override
@@ -571,7 +693,7 @@ class Example extends _$Example {
 
 **Bad**:
 
-```dart
+```dart no-analyze
 @riverpod
 abstract class Example extends _$Example {
   @override
@@ -587,28 +709,34 @@ is possibly nullable.
 **Bad**:
 
 ```dart
-switch (...) {
+switch (asyncValue) {
   // int? is nullable, therefore ":final value?" should not be used
   case AsyncValue<int?>(:final value?):
      print('data $value');
+  default:
+  // ...
 }
 ```
 
 **Good**:
 
 ```dart
-switch (...) {
+switch (asyncValue) {
   // int is non-nullable, so using ":final value?" is fine.
   case AsyncValue<int>(:final value?):
      print('data $value');
+  default:
+  // ...
 }
 ```
 
 ```dart
-switch (...) {
+switch (asyncValue) {
   // int? is nullable, therefore we use "hasValue: true"
   case AsyncValue<int?>(:final value, hasValue: true):
      print('data $value');
+  default:
+  // ...
 }
 ```
 
@@ -620,7 +748,7 @@ This includes `.state`, `.future`, and `.ref`.
 
 **Bad**:
 
-```dart
+```dart no-analyze
 @riverpod
 class A extends _$A {
   @override
@@ -641,7 +769,7 @@ class B extends _$B {
 
 **Good**:
 
-```dart
+```dart no-analyze
 @riverpod
 class A extends _$A {
   @override
