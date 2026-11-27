@@ -29,6 +29,8 @@ abstract class _$CustomAnnotation extends _$CustomAnnotationBase {
     required FutureOr<Storage<Object, String>> storage,
     String Function(String state)? encode,
     String Function(String encoded)? decode,
+    String? Function(AsyncError<String>)? encodeError,
+    bool Function(String)? shouldPersist,
     StorageOptions options = const StorageOptions(),
   }) {
     return persist(
@@ -36,6 +38,8 @@ abstract class _$CustomAnnotation extends _$CustomAnnotationBase {
       key: key ?? 'CustomAnnotation',
       encode: encode ?? (value) => value,
       decode: decode ?? (encoded) => encoded.toString(),
+      encodeError: encodeError,
+      shouldPersist: shouldPersist,
       options: options,
     );
   }
@@ -112,12 +116,7 @@ class Bar {
 class PassEncodeDecodeByHand extends _$PassEncodeDecodeByHand {
   @override
   Future<Map<String, String>> build() async {
-    await persist(
-      key: 'Foo',
-      ref.watch(storageProvider.future),
-      decode: (encoded) => {'value': encoded},
-      encode: (state) => state['value']!,
-    ).future;
+    await persist(key: 'Foo', ref.watch(storageProvider.future), decode: (encoded) => {'value': encoded}, encode: (state) => state['value']!).future;
 
     return state.value ?? {};
   }

@@ -18,9 +18,7 @@ class JsonGenerator extends ParserGenerator<JsonPersist> {
   FutureOr<String> generateForUnit(List<CompilationUnit> compilationUnits) {
     if (compilationUnits.isEmpty) return '';
 
-    final buffer = AnalyzerBuffer.part(
-      compilationUnits.first.declaredFragment!.element,
-    );
+    final buffer = AnalyzerBuffer.part(compilationUnits.first.declaredFragment!.element);
 
     for (final unit in compilationUnits.expand((e) => e.declarations)) {
       final provider = unit.provider;
@@ -30,9 +28,7 @@ class JsonGenerator extends ParserGenerator<JsonPersist> {
         continue;
       }
 
-      final hasAnnotation = provider.node.metadata.any(
-        (e) => e.annotationOfType(jsonPersistType, exact: true) != null,
-      );
+      final hasAnnotation = provider.node.metadata.any((e) => e.annotationOfType(jsonPersistType, exact: true) != null);
       // Not annotated by @JsonPersist
       if (!hasAnnotation) continue;
 
@@ -42,17 +38,11 @@ class JsonGenerator extends ParserGenerator<JsonPersist> {
     return buffer.toString();
   }
 
-  void _generateNotifier(
-    AnalyzerBuffer buffer,
-    ClassBasedProviderDeclaration provider,
-  ) {
-    if (provider.node.namePart.typeParameters?.typeParameters.isNotEmpty ??
-        false) {
+  void _generateNotifier(AnalyzerBuffer buffer, ClassBasedProviderDeclaration provider) {
+    if (provider.node.namePart.typeParameters?.typeParameters.isNotEmpty ?? false) {
       throw InvalidGenerationSourceError(
         'Encoding generic notifiers is currently not supported',
-        element: provider.node.declaredFragment!.libraryFragment.element.classes
-            .where((e) => e.name == provider.name.lexeme)
-            .firstOrNull,
+        element: provider.node.declaredFragment!.libraryFragment.element.classes.where((e) => e.name == provider.name.lexeme).firstOrNull,
         node: provider.node,
       );
     }
@@ -115,6 +105,8 @@ abstract class $notifierClass$genericsDefinition extends $baseClass {
     String? key,
     String Function(${provider.providerElement.valueTypeNode.toCode()} state)? encode,
     ${provider.providerElement.valueTypeNode.toCode()} Function(String encoded)? decode,
+    String? Function(#{{riverpod|AsyncError}}<${provider.providerElement.valueTypeNode.toCode()}> error)? encodeError,
+    bool Function(${provider.providerElement.valueTypeNode.toCode()} state)? shouldPersist,
     #{{riverpod|StorageOptions}} options = const #{{riverpod|StorageOptions}}(),
   }) {
     return #{{riverpod|NotifierPersistX}}(this).persist<String, String>(
@@ -125,6 +117,8 @@ abstract class $notifierClass$genericsDefinition extends $baseClass {
         final e = #{{riverpod_annotation|\$jsonCodex}}.decode(encoded);
         return $decoded;
       },
+      encodeError: encodeError,
+      shouldPersist: shouldPersist,
       options: options,
     );
   }
