@@ -9,12 +9,7 @@ import 'frame_view.dart';
 import 'provider_list.dart';
 
 class FrameStepper extends HookConsumerWidget {
-  const FrameStepper({
-    super.key,
-    required this.onSelect,
-    required this.selectedFrame,
-    required this.selectedElement,
-  });
+  const FrameStepper({super.key, required this.onSelect, required this.selectedFrame, required this.selectedElement});
 
   final void Function(FrameId frame) onSelect;
   final FoldedFrame? selectedFrame;
@@ -30,15 +25,9 @@ class FrameStepper extends HookConsumerWidget {
     return Row(
       children: [
         Tooltip(
-          message: enabled
-              ? 'Stop time travel and discard previous frames'
-              : 'Start time travel and record future frames',
+          message: enabled ? 'Stop time travel and discard previous frames' : 'Start time travel and record future frames',
           child: IconButton(
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              side: BorderSide.none,
-              elevation: 0,
-            ),
+            style: IconButton.styleFrom(backgroundColor: Colors.transparent, side: BorderSide.none, elevation: 0),
             iconSize: 20,
             padding: const EdgeInsets.all(4),
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -48,18 +37,10 @@ class FrameStepper extends HookConsumerWidget {
                 : () async {
                     busy.value = true;
                     try {
-                      await ref
-                          .read(timeTravelProvider.notifier)
-                          .setEnabled(!enabled);
+                      await ref.read(timeTravelProvider.notifier).setEnabled(!enabled);
                     } catch (error) {
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Could not change time travel: $error',
-                            ),
-                          ),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not change time travel: $error')));
                       }
                     } finally {
                       if (context.mounted) busy.value = false;
@@ -72,12 +53,7 @@ class FrameStepper extends HookConsumerWidget {
             opacity: enabled ? 1 : 0.4,
             child: IgnorePointer(
               ignoring: !enabled,
-              child: _FrameTimeline(
-                enabled: enabled,
-                onSelect: onSelect,
-                selectedFrame: selectedFrame,
-                selectedElement: selectedElement,
-              ),
+              child: _FrameTimeline(enabled: enabled, onSelect: onSelect, selectedFrame: selectedFrame, selectedElement: selectedElement),
             ),
           ),
         ),
@@ -87,12 +63,7 @@ class FrameStepper extends HookConsumerWidget {
 }
 
 class _FrameTimeline extends HookConsumerWidget {
-  const _FrameTimeline({
-    required this.enabled,
-    required this.onSelect,
-    required this.selectedFrame,
-    required this.selectedElement,
-  });
+  const _FrameTimeline({required this.enabled, required this.onSelect, required this.selectedFrame, required this.selectedElement});
 
   final bool enabled;
 
@@ -123,17 +94,9 @@ class _FrameTimeline extends HookConsumerWidget {
       final currentOffset = controller.offset;
 
       if (offset < currentOffset) {
-        controller.animateTo(
-          offset,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-        );
+        controller.animateTo(offset, duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
       } else if (offset + 30.0 > currentOffset + viewport) {
-        controller.animateTo(
-          offset - viewport + 30.0,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-        );
+        controller.animateTo(offset - viewport + 30.0, duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
       }
     }
 
@@ -145,10 +108,7 @@ class _FrameTimeline extends HookConsumerWidget {
             child: Center(child: Text('No frames with state changes')),
           );
         }
-        assert(
-          selectedFrame != null,
-          'Even though frames.length > 0, selectedFrame is null',
-        );
+        assert(selectedFrame != null, 'Even though frames.length > 0, selectedFrame is null');
 
         final currentIndex = value.indexOf(selectedFrame!);
         final canGoFirst = enabled && currentIndex > 0;
@@ -161,17 +121,11 @@ class _FrameTimeline extends HookConsumerWidget {
           child: Row(
             mainAxisAlignment: .center,
             children: [
-              _NavigationButton(
-                icon: Icons.first_page,
-                tooltip: 'First frame',
-                onPressed: canGoFirst ? () => select(value.first.id) : null,
-              ),
+              _NavigationButton(icon: Icons.first_page, tooltip: 'First frame', onPressed: canGoFirst ? () => select(value.first.id) : null),
               _NavigationButton(
                 icon: Icons.chevron_left,
                 tooltip: 'Previous frame',
-                onPressed: canGoPrevious
-                    ? () => select(value[currentIndex - 1].id)
-                    : null,
+                onPressed: canGoPrevious ? () => select(value[currentIndex - 1].id) : null,
               ),
               Flexible(
                 child: Scrollbar(
@@ -191,9 +145,7 @@ class _FrameTimeline extends HookConsumerWidget {
                         isSelected: frame == selectedFrame,
                         status: switch (selectedElement) {
                           null => null,
-                          final element => frame.statusOf(
-                            element.element.provider.elementId,
-                          ),
+                          final element => frame.statusOf(element.element.provider.elementId),
                         },
                         onTap: enabled ? () => select(frame.id) : null,
                       );
@@ -204,43 +156,31 @@ class _FrameTimeline extends HookConsumerWidget {
               _NavigationButton(
                 icon: Icons.chevron_right,
                 tooltip: 'Next frame',
-                onPressed: canGoNext
-                    ? () => select(value[currentIndex + 1].id)
-                    : null,
+                onPressed: canGoNext ? () => select(value[currentIndex + 1].id) : null,
               ),
-              _NavigationButton(
-                icon: Icons.last_page,
-                tooltip: 'Last frame',
-                onPressed: canGoLast ? () => select(value.last.id) : null,
-              ),
+              _NavigationButton(icon: Icons.last_page, tooltip: 'Last frame', onPressed: canGoLast ? () => select(value.last.id) : null),
             ],
           ),
         );
-      case AsyncValue(error: != null):
-        return const SizedBox(
+      case AsyncValue(:final error, :final stackTrace) when error != null:
+        debugPrint('Riverpod DevTools error: $error');
+        debugPrint('Stack trace: $stackTrace');
+
+        return SizedBox(
           height: _stepperHeight,
-          child: Text('Error while connecting to the Riverpod application'),
-        );
-      case AsyncValue():
-        return Container(
-          alignment: Alignment.center,
-          height: _stepperHeight,
-          child: const Text(
-            'Waiting to connect to the Riverpod application...',
+          child: Tooltip(
+            message: '$error\n$stackTrace',
+            child: Text('Connection error: $error', style: const TextStyle(color: Colors.red)),
           ),
         );
+      case AsyncValue():
+        return Container(alignment: Alignment.center, height: _stepperHeight, child: const Text('Waiting to connect to the Riverpod application...'));
     }
   }
 }
 
 class _FrameStep extends StatelessWidget {
-  const _FrameStep({
-    super.key,
-    required this.frame,
-    required this.isSelected,
-    required this.onTap,
-    required this.status,
-  });
+  const _FrameStep({super.key, required this.frame, required this.isSelected, required this.onTap, required this.status});
 
   final FoldedFrame frame;
   final bool isSelected;
@@ -250,16 +190,13 @@ class _FrameStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final borderColor = isSelected
-        ? theme.colorScheme.primary
-        : theme.colorScheme.secondary;
+    final borderColor = isSelected ? theme.colorScheme.primary : theme.colorScheme.secondary;
 
     const borderWidth = 3.0;
     final size = isSelected ? 20.0 + borderWidth * 2 : 15.0;
 
     final color = switch (status) {
-      ProviderStatusInFrame.added ||
-      ProviderStatusInFrame.modified => theme.colorScheme.primary,
+      ProviderStatusInFrame.added || ProviderStatusInFrame.modified => theme.colorScheme.primary,
       ProviderStatusInFrame.disposed => Colors.red,
       null => theme.colorScheme.onSurface.withValues(alpha: 0.5),
     };
@@ -272,9 +209,7 @@ class _FrameStep extends StatelessWidget {
           child: _Circle(
             size: size,
             color: color,
-            border: isSelected
-                ? .all(color: borderColor, width: borderWidth)
-                : null,
+            border: isSelected ? .all(color: borderColor, width: borderWidth) : null,
           ),
         ),
       ),
@@ -301,18 +236,12 @@ class _FrameTooltip extends StatelessWidget {
       tooltipBuilder: (context, animation) {
         return HookConsumer(
           builder: (context, ref, _) {
-            final originStates = ref.watch(
-              filteredProvidersProvider((search: '', frame: frame.id)),
-            );
+            final originStates = ref.watch(filteredProvidersProvider((search: '', frame: frame.id)));
 
             return _FrameTooltipBody(
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: ProviderList(
-                  shrinkWrap: true,
-                  showOthers: false,
-                  originStates: originStates,
-                ),
+                child: ProviderList(shrinkWrap: true, showOthers: false, originStates: originStates),
               ),
             );
           },
@@ -350,12 +279,7 @@ class _FrameTooltipBody extends StatelessWidget {
 }
 
 class _Circle extends StatelessWidget {
-  const _Circle({
-    super.key,
-    required this.size,
-    required this.color,
-    this.border,
-  });
+  const _Circle({super.key, required this.size, required this.color, this.border});
 
   final double size;
   final Color color;
@@ -372,12 +296,7 @@ class _Circle extends StatelessWidget {
 }
 
 class _NavigationButton extends StatelessWidget {
-  const _NavigationButton({
-    super.key,
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
+  const _NavigationButton({super.key, required this.icon, required this.tooltip, required this.onPressed});
 
   final IconData icon;
   final String tooltip;
