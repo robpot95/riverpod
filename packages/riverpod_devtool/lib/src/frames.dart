@@ -162,17 +162,8 @@ class _FrameTimeline extends HookConsumerWidget {
             ],
           ),
         );
-      case AsyncValue(:final error, :final stackTrace) when error != null:
-        debugPrint('Riverpod DevTools error: $error');
-        debugPrint('Stack trace: $stackTrace');
-
-        return SizedBox(
-          height: _stepperHeight,
-          child: Tooltip(
-            message: '$error\n$stackTrace',
-            child: Text('Connection error: $error', style: const TextStyle(color: Colors.red)),
-          ),
-        );
+      case AsyncValue(error: != null):
+        return const SizedBox(height: _stepperHeight, child: Text('Error while connecting to the Riverpod application'));
       case AsyncValue():
         return Container(alignment: Alignment.center, height: _stepperHeight, child: const Text('Waiting to connect to the Riverpod application...'));
     }
